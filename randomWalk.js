@@ -10,23 +10,21 @@ function WalkManager() {
 
   this.gridSize = 4 ;
 
+  $("body").append("<div id=data-div></div>")
+
   this.canvas = d3.select("body").append("svg:svg")
     .attr("width", this.walkspaceWidth)
     .attr("height", this.walkspaceHeight);
 
   this.defaultPalette = ['#fff7f3','#fde0dd','#fcc5c0','#fa9fb5','#f768a1','#dd3497','#ae017e','#7a0177','#49006a'].reverse();
 
-  this.reportMove = function(walk) {
-    // console.log(walk)
-  }
-
-  this.generateRandomPalette = function() {
-    return (new ColorScheme).from_hue(Math.ceil(Math.random()*30))
-      .scheme('triade')   
-      .variation('soft')
-      .colors()
-      .reverse()
-  }
+  // this.generateRandomPalette = function() {
+  //   return (new ColorScheme).from_hue(Math.ceil(Math.random()*30))
+  //     .scheme('triade')   
+  //     .variation('soft')
+  //     .colors()
+  //     .reverse()
+  // }
 
   var wm = this
   $(document).ready(function (e) {
@@ -36,7 +34,7 @@ function WalkManager() {
         y: e.pageY - (e.pageY % wm.gridSize)
       }).move()
     })
-  })
+  })  
 
   this.buildWalk = function(startPosition) {
     var args = {
@@ -46,7 +44,7 @@ function WalkManager() {
       canvas: this.canvas,
       walkspaceWidth: this.walkspaceWidth,
       walkspaceHeight: this.walkspaceHeight,
-      walkId: "walk-" + this.walks.length,
+      walkId: this.walks.length,
       reportMove: this.reportMove
     }
 
@@ -63,9 +61,28 @@ function Walk(args = {}) {
   this.walkspaceWidth = args.walkspaceWidth || 200;
   this.walkspaceHeight = args.walkspaceHeight || 200;
   this.walkId = args.walkId
-  this.boxId = this.walkId + "-box" || "walk-0-box"
-  this.stackHeight = 0
-  this.reportMove = args.reportMove
+  this.boxId = "walk-" + this.walkId + "-box" || "walk-0-box"
+  this.spanId = "walk-" + this.walkId + "-span" || "walk-0-span"
+  
+  this.steps = 0
+
+  this.canvas.append("text")
+    .attr("id", this.spanId)
+    .style("stroke","#fcc5c0")
+    .style("fill","#fcc5c0")
+    .style("font-family","Montserrat")
+    .attr("x",50)
+    .attr("y",50 + 20 * this.walkId)
+
+  this.canvas.append("text")
+    .attr("id", this.boxId + "-label")
+    .style("stroke","#fcc5c0")
+    .style("fill","#fcc5c0")
+    .style("font-family","Montserrat")
+
+  // $("#data-div").append("<span id=" + this.spanId + "/><br>")
+  // this.span = $("#" + this.spanId)
+  // this.span.css("color","#fcc5c0").css("font-family","Montserrat")
 
   this.generateRandomStart = function() {
     var x0 = Math.floor(this.walkspaceWidth * Math.random())
@@ -145,7 +162,6 @@ function Walk(args = {}) {
       return newMove
     }
 
-    // console.log("Still Running... " + (new Date().getTime()))
     var xOrY = Math.random()
 
     if (Math.random() < xOrY) {
@@ -178,7 +194,7 @@ function Walk(args = {}) {
 
     walk.canvas.selectAll('#'+this.boxId).remove()
 
-    walk.canvas.append("svg:rect")
+    var box = walk.canvas.append("svg:rect")
       .attr("x",this.boxCoordinates.p0.x)
       .attr("y",this.boxCoordinates.p0.y)
       .attr("width", this.boxCoordinates.p1.x - this.boxCoordinates.p0.x)
@@ -190,7 +206,19 @@ function Walk(args = {}) {
       .style("stroke-opacity",0.4)
       .attr("id", this.boxId)
 
-    this.reportMove(this)
+    this.steps += 1
+
+    walk.canvas.select('#' + this.boxId + "-label")
+      .attr("x",this.boxCoordinates.p0.x - 10)
+      .attr("y",this.boxCoordinates.p0.y - 5)
+      .style("stroke","#fcc5c0")
+      .style("fill","#fcc5c0")
+      .style("font-family","Montserrat")
+      .text(this.walkId)
+
+    walk.canvas.select('#' + this.spanId)
+      .text("walk " + this.walkId + " steps = " + this.steps)
+
     window.setTimeout(function() {
       walk.move();
     }, 0);
@@ -198,6 +226,3 @@ function Walk(args = {}) {
 }
 
 var walkManager = new WalkManager()
-var i = 0
-
-// walkManager.buildWalk().move()
