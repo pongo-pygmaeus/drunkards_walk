@@ -119,6 +119,13 @@ $(document).ready(function() {
       $('#vis-svg').width(walkspaceWidth)
       $('#data-svg').width(walkspaceWidth)
     })
+
+    $('#clear-canvas-button').click(function(e) {
+      e.preventDefault();
+      // THIS IS PROBABLY NOT EFFICIENT. CHANGE LATER.
+      wm.walks.map(walk => walk.clear());
+      wm.walks = [];
+    })
   }
 
   function Walk(args = {}) {
@@ -146,6 +153,13 @@ $(document).ready(function() {
     walk.distanceFromStart = 0.0;
     walk.distanceDictionary = {};
     walk.boxHighlight = false;
+    walk.elementClass = "walk-" + walk.walkId + "-class"
+    walk.moving = true;
+
+    walk.clear = function() {
+      walk.moving = false;
+      walk.canvas.selectAll('.'+ walk.elementClass).remove();
+    }
 
     walk.generateRandomStart = function() {
       var x0 = Math.floor(walkspaceWidth * Math.random());
@@ -303,6 +317,7 @@ $(document).ready(function() {
           .style("stroke", walk.palette[0])
           .style("stroke-width", 2)
           .attr("id", lineId)
+          .attr("class", walk.elementClass)
           .datum(0);
       } else {
         var colorIdx = Math.min(line.datum() + 1, walk.palette.length - 1);
@@ -329,6 +344,7 @@ $(document).ready(function() {
             .attr("x", walk.boxCoordinates.p1.x - 8)
             .attr("y", walk.boxCoordinates.p1.y - 8)
             .attr("text-anchor", "end")
+            .attr("class", "walk-box-label " + walk.elementClass)
             .text(walk.steps);
         }
 
@@ -343,7 +359,7 @@ $(document).ready(function() {
           .style("stroke", "rgb(255,255,255)")
           .style("stroke-opacity",strokeOpacity)
           .attr("id", walk.boxId)
-          .attr("class", "walk-box");
+          .attr("class", "walk-box-label " + walk.elementClass)
 
         walk.canvas.append("text")
           .attr("id", walk.boxId + "-label")
@@ -353,16 +369,18 @@ $(document).ready(function() {
           .attr("x", walk.boxCoordinates.p0.x + 6)
           .attr("y", walk.boxCoordinates.p0.y + 18)
           .text(walk.walkId)
-          .attr("class", "walk-box-label");
+          .attr("class", "walk-box-label " + walk.elementClass)
       }
     }
 
     walk.move = function() {
-      walk.updateWalkData();
-      walk.drawMove();
-      window.setTimeout(function() {
-        walk.move();
-      }, 2);
+      if(walk.moving) {
+        walk.updateWalkData();
+        walk.drawMove();
+        window.setTimeout(function() {
+          walk.move();
+        }, 0);
+      }
     }
   }
 
