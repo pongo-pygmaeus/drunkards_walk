@@ -1,160 +1,243 @@
-function WalkManager() {
-  this.walks = [];
-  this.walkspaceWidth = window.innerWidth
-    || document.documentElement.clientWidth
-    || document.body.clientWidth;
+$(document).ready(function() {
+  function WalkManager() {
+    var wm = this;
+    wm.walks = [];
+    wm.boxesOn = true;
 
-  this.walkspaceHeight = window.innerHeight
-    || document.documentElement.clientHeight
-    || document.body.clientHeight;
+    windowWidth = window.innerWidth
+      || document.documentElement.clientWidth
+      || document.body.clientWidth;
 
-  this.gridSize = 4 ;
+    windowHeight = (window.innerHeight
+      || document.documentElement.innerHeight
+      || document.body.innerHeight);
 
-  $("body").append("<div id=data-div></div>")
+    walkspaceWidth = 0.99 * windowWidth
 
-  this.canvas = d3.select("body").append("svg:svg")
-    .attr("width", this.walkspaceWidth)
-    .attr("height", this.walkspaceHeight);
+    walkspaceHeight = 0.6 * windowHeight
+    graphHeight = 0.3 * windowHeight
 
-  this.defaultPalette = ['#fff7f3','#fde0dd','#fcc5c0','#fa9fb5','#f768a1','#dd3497','#ae017e','#7a0177','#49006a'].reverse();
+    wm.gridSize = 4 ;
 
-  // this.generateRandomPalette = function() {
-  //   return (new ColorScheme).from_hue(Math.ceil(Math.random()*30))
-  //     .scheme('triade')   
-  //     .variation('soft')
-  //     .colors()
-  //     .reverse()
-  // }
+    clickOffset = $("#header-div").height();
 
-  var wm = this
-  $(document).ready(function (e) {
-    $('body').click(function(e) {
-      wm.buildWalk({
-        x: e.pageX - (e.pageX % wm.gridSize),
-        y: e.pageY - (e.pageY % wm.gridSize)
-      }).move()
+    wm.canvas = d3.select("#vis-div").append("svg:svg")
+      .attr("width", walkspaceWidth)
+      .attr("height", walkspaceHeight)
+      .attr("id","vis-svg");
+
+    wm.graphs = d3.select("#data-div").append("svg:svg")
+      .attr("width", walkspaceWidth)
+      .attr("height", graphHeight)
+      .attr("id","data-svg");
+
+    wm.defaultPalette = [
+      '#fff7f3',
+      '#fde0dd',
+      '#fcc5c0',
+      '#fa9fb5',
+      '#f768a1',
+      '#dd3497',
+      '#ae017e',
+      '#7a0177',
+      '#49006a'].reverse();
+
+    wm.buildWalk = function(startPosition) {
+      var args = {
+        startPosition: startPosition,
+        palette: wm.defaultPalette,
+        gridSize: wm.gridSize,
+        canvas: wm.canvas,
+        walkId: wm.walks.length,
+        reportMove: wm.reportMove,
+        boxesOn: wm.boxesOn
+      };
+
+      var walk = new Walk(args);
+      wm.walks.push(walk);
+      return walk;
+    }
+
+    $('#vis-div').click(function(e) {
+      var x = e.pageX - (e.pageX % wm.gridSize)
+      var y = (e.pageY - clickOffset) - ((e.pageY - clickOffset) % wm.gridSize)
+
+      var clickedWalk = wm.walks.find(function(walk){
+        //console.log("Checking Walk " + walk.walkId)
+        return walk.isPointInBox({x: e.pageX, y: e.pageY - 40})
+      })
+
+      if (!(y < walkspaceHeight)) {
+        y = walkspaceHeight - (walkspaceHeight % wm.gridSize)
+      }
+
+      if (!clickedWalk) {
+        wm.buildWalk({
+          x: x,
+          y: y
+        }).move();
+      }
     })
-  })  
 
-  this.buildWalk = function(startPosition) {
-    var args = {
-      startPosition: startPosition,
-      palette: this.defaultPalette,
-      gridSize: this.gridSize,
-      canvas: this.canvas,
-      walkspaceWidth: this.walkspaceWidth,
-      walkspaceHeight: this.walkspaceHeight,
-      walkId: this.walks.length,
-      reportMove: this.reportMove
-    }
+    $("#vis-svg").on("mousedown", function(e) {
+      //console.log("x " + e.pageX)
+      //console.log("y " + (e.pageY))
 
-    var walk = new Walk(args)
-    this.walks.push(walk)
-    return walk
-  }
-}
+      var clickedWalk = wm.walks.find(function(walk){
+        //console.log("Checking Walk " + walk.walkId)
+        return walk.isPointInBox({x: e.pageX, y: e.pageY - clickOffset})
+      })
 
-function Walk(args = {}) {
-  this.palette = args.palette || ['#fff7f3','#fde0dd','#fcc5c0','#fa9fb5','#f768a1','#dd3497','#ae017e','#7a0177','#49006a'].reverse();
-  this.gridSize = args.gridSize || 10;
-  this.canvas = args.canvas;
-  this.walkspaceWidth = args.walkspaceWidth || 200;
-  this.walkspaceHeight = args.walkspaceHeight || 200;
-  this.walkId = args.walkId
-  this.boxId = "walk-" + this.walkId + "-box" || "walk-0-box"
-  this.spanId = "walk-" + this.walkId + "-span" || "walk-0-span"
-  
-  this.steps = 0
+      if (clickedWalk) {
+        //console.log("Clicked walk " + clickedWalk.walkId)
+        wm.walks.filter(walk => walk.walkId != clickedWalk.walkId)
+                .map( walk => walk.setBoxHighlighted(false))
+        clickedWalk.toggleBoxHighlighted()
+      }
+    })
 
-  this.canvas.append("text")
-    .attr("id", this.spanId)
-    .style("stroke","#fcc5c0")
-    .style("fill","#fcc5c0")
-    .style("font-family","Montserrat")
-    .attr("x",50)
-    .attr("y",50 + 20 * this.walkId)
 
-  this.canvas.append("text")
-    .attr("id", this.boxId + "-label")
-    .style("stroke","#fcc5c0")
-    .style("fill","#fcc5c0")
-    .style("font-family","Montserrat")
+    $('#toggle-box-button').click(function(e) {
+      e.preventDefault();
+      wm.boxesOn = !wm.boxesOn;
+      wm.walks.map( walk => walk.setBoxVisible(wm.boxesOn));
+    })
 
-  // $("#data-div").append("<span id=" + this.spanId + "/><br>")
-  // this.span = $("#" + this.spanId)
-  // this.span.css("color","#fcc5c0").css("font-family","Montserrat")
+    $(window).resize(function(){
+      walkspaceWidth = window.innerWidth
+        || document.documentElement.clientWidth
+        || document.body.clientWidth;
 
-  this.generateRandomStart = function() {
-    var x0 = Math.floor(this.walkspaceWidth * Math.random())
-    x0 = x0 - (x0 % this.gridSize)
-    var y0 = Math.floor(this.walkspaceHeight * Math.random())
-    y0 = y0 - (y0 % this.gridSize)
-    return {x: x0, y: y0}
+      windowHeight = (window.innerHeight
+        || document.documentElement.innerHeight
+        || document.body.innerHeight);
+
+      walkspaceHeight = 0.6 * windowHeight
+      graphHeight = 0.3 * windowHeight
+      clickOffset = $("#header-div").height();
+
+      $('#vis-svg').width(walkspaceWidth)
+      $('#data-svg').width(walkspaceWidth)
+    })
   }
 
-  this.startPosition = args.startPosition || this.generateRandomStart();
-
-  this.currentPosition = this.startPosition;
-  this.boxCoordinates = {
-    p0: {
-      x: this.currentPosition.x, 
-      y: this.currentPosition.y
-    }, 
-    p1: {
-      x: this.currentPosition.x, 
-      y: this.currentPosition.y
-    } 
-  }
-
-  this.isPointInBox = function(point) {
-    if (point.x > this.box.p0.x && 
-        point.x < this.box.p1.x &&
-        point.y > this.box.p0.y &&
-        point.y < this.box.p1.y)  {
-      return true
-    } else {
-      return false
-    }
-  }
-
-  this.updateBox = function() {
-    if (this.currentPosition.x > this.boxCoordinates.p1.x) {
-      this.boxCoordinates.p1.x = this.currentPosition.x
-    }
-    if (this.currentPosition.x < this.boxCoordinates.p0.x) {
-      this.boxCoordinates.p0.x = this.currentPosition.x
-    }
-    if (this.currentPosition.y > this.boxCoordinates.p1.y) {
-      this.boxCoordinates.p1.y = this.currentPosition.y
-    }
-    if (this.currentPosition.y < this.boxCoordinates.p0.y) {
-      this.boxCoordinates.p0.y = this.currentPosition.y
-    }
-  } 
-
-  this.move = function() {
+  function Walk(args = {}) {
     var walk = this;
-    var x = walk.currentPosition.x
-    var y = walk.currentPosition.y
-    var x_end = walk.currentPosition.x
-    var y_end = walk.currentPosition.y;
 
-    var generateNextMove = function(currentValue, maxSize)  {
-      var randProb = Math.random()
-      var newMove = currentValue
+    var defaultPalette = [
+      '#fff7f3',
+      '#fde0dd',
+      '#fcc5c0',
+      '#fa9fb5',
+      '#f768a1',
+      '#dd3497',
+      '#ae017e',
+      '#7a0177',
+      '#49006a'].reverse();
 
+    walk.palette = args.palette || defaultPalette;
+    walk.gridSize = args.gridSize || 10;
+    walk.canvas = args.canvas;
+    walk.walkId = args.walkId;
+    walk.boxId = "walk-" + walk.walkId + "-box" || "walk-0-box";
+    walk.spanId = "walk-" + walk.walkId + "-span" || "walk-0-span";
+    walk.boxVisible = args.boxesOn || false;
+    walk.steps = 0;
+    walk.distanceFromStart = 0.0;
+    walk.distanceDictionary = {};
+    walk.boxHighlight = false;
+
+    walk.generateRandomStart = function() {
+      var x0 = Math.floor(walkspaceWidth * Math.random());
+      x0 = x0 - (x0 % walk.gridSize);
+      var y0 = Math.floor(walkspaceHeight * Math.random());
+      y0 = y0 - (y0 % walk.gridSize);
+      return {x: x0, y: y0};
+    }
+
+    walk.startPosition = args.startPosition || walk.generateRandomStart();
+
+    walk.currentPosition = {
+      x: walk.startPosition.x, 
+      y: walk.startPosition.y
+    };
+
+    walk.lastPosition = {
+      x: walk.startPosition.x, 
+      y: walk.startPosition.y
+    };
+
+    walk.boxCoordinates = {
+      p0: {
+        x: walk.currentPosition.x, 
+        y: walk.currentPosition.y
+      }, 
+      p1: {
+        x: walk.currentPosition.x, 
+        y: walk.currentPosition.y
+      }
+    }
+
+    walk.setBoxVisible = function(visible) {
+      walk.boxVisible = visible;
+    }
+
+    walk.toggleBoxHighlighted = function() {
+      walk.boxHighlighted = !walk.boxHighlighted;
+      console.log(walk.boxHighlighted)
+    }
+
+    walk.setBoxHighlighted = function(highlighted) {
+      walk.boxHighlighted = highlighted;
+    }
+
+    walk.isPointInBox = function(point) {
+
+      //console.log("Min X = " + walk.boxCoordinates.p0.x)
+      //console.log("Max X = " + walk.boxCoordinates.p1.x)
+      //console.log("Min Y = " + walk.boxCoordinates.p0.y)
+      //console.log("Max Y = " + walk.boxCoordinates.p1.y)
+
+      if (point.x > walk.boxCoordinates.p0.x && 
+          point.x < walk.boxCoordinates.p1.x &&
+          point.y > walk.boxCoordinates.p0.y &&
+          point.y < walk.boxCoordinates.p1.y)  {
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    walk.updateBoxData = function() {
+      if (walk.currentPosition.x > walk.boxCoordinates.p1.x) {
+        walk.boxCoordinates.p1.x = walk.currentPosition.x;
+      }
+      if (walk.currentPosition.x < walk.boxCoordinates.p0.x) {
+        walk.boxCoordinates.p0.x = walk.currentPosition.x;
+      }
+      if (walk.currentPosition.y > walk.boxCoordinates.p1.y) {
+        walk.boxCoordinates.p1.y = walk.currentPosition.y;
+      }
+      if (walk.currentPosition.y < walk.boxCoordinates.p0.y) {
+        walk.boxCoordinates.p0.y = walk.currentPosition.y;
+      }
+    } 
+
+    walk.generateNextMove = function(currentValue, maxSize)  {
+      var randProb = Math.random();
+      var newMove = currentValue;
       // var jump = Math.floor((Math.random() * 5))
-      var jump = 1
+      var jump = 1;
 
       if (Math.random() < randProb) {
-        if ((currentValue + (walk.gridSize * jump)) < maxSize) {
-          newMove = currentValue + (walk.gridSize * jump)
+        if ((currentValue + (walk.gridSize * jump)) < (maxSize - 20)) {
+          newMove = currentValue + (walk.gridSize * jump);
         } else {
-          newMove = currentValue - (walk.gridSize * jump)
+          newMove = currentValue - (walk.gridSize * jump);
         }
       } else {
-        if ((currentValue - (walk.gridSize * jump)) >= 0) {
-          newMove = currentValue - (walk.gridSize * jump)
+        if ((currentValue - (walk.gridSize * jump)) >= 17) {
+          newMove = currentValue - (walk.gridSize * jump);
         } else {
           newMove = currentValue + (walk.gridSize * jump);
         }
@@ -162,67 +245,126 @@ function Walk(args = {}) {
       return newMove
     }
 
-    var xOrY = Math.random()
-
-    if (Math.random() < xOrY) {
-      x_end = generateNextMove(x, this.walkspaceWidth)
-    } else {
-      y_end = generateNextMove(y, this.walkspaceHeight)
+    walk.calculateDistanceFromStart = function(){
+      xDiff = walk.currentPosition.x - walk.startPosition.x;
+      yDiff = walk.currentPosition.y - walk.startPosition.y;
+      return Math.sqrt((xDiff * xDiff) + (yDiff * yDiff));
     }
 
-    line = walk.canvas.select('line[x1="' + x + '"][x2="' + x_end + '"]'+
-                      '[y1="' + y + '"][y2="' + y_end + '"]');
-    if (line.empty()) {
-      walk.canvas.append("svg:line")
-        .attr("x1", x)
-        .attr("y1", y)
-        .attr("x2", x_end)
-        .attr("y2", y_end)
-        .style("stroke", walk.palette[0])
-        .style("stroke-width", 2)
-        .datum(0);
-    } else {
-      var color_idx = Math.min(line.datum() + 1, walk.palette.length - 1);
-      line.style('stroke', walk.palette[color_idx])
-        .datum(color_idx)
+    walk.updateWalkData = function() {
+      var x = walk.currentPosition.x;
+      var y = walk.currentPosition.y;
+      var xEnd = walk.currentPosition.x;
+      var yEnd = walk.currentPosition.y;
+
+      var xOrY = Math.random();
+
+      if (Math.random() < xOrY) {
+        xEnd = walk.generateNextMove(x, walkspaceWidth);
+      } else {
+        yEnd = walk.generateNextMove(y, walkspaceHeight);
+      }
+
+      walk.lastPosition.x = walk.currentPosition.x;
+      walk.lastPosition.y = walk.currentPosition.y;
+
+      walk.currentPosition.x = xEnd;
+      walk.currentPosition.y = yEnd;
+
+      walk.updateBoxData();
+      walk.steps += 1;
+
+      var distanceFromStart = walk.calculateDistanceFromStart();
+      var roundedDistanceFromStart = Math.floor(distanceFromStart);
+
+      if (walk.distanceDictionary[roundedDistanceFromStart]) {
+        walk.distanceDictionary[roundedDistanceFromStart] += 1;
+      } else {
+        walk.distanceDictionary[roundedDistanceFromStart] = 1;
+      }
     }
 
-    walk.currentPosition.x = x_end
-    walk.currentPosition.y = y_end
+    walk.drawMove = function() {
+      var x = walk.lastPosition.x;
+      var y = walk.lastPosition.y;
+      var xEnd = walk.currentPosition.x;
+      var yEnd = walk.currentPosition.y;
 
-    this.updateBox()
+      var lineId = "line-" + x + "-" + y + "-" + xEnd + "-" + yEnd;
 
-    walk.canvas.selectAll('#'+this.boxId).remove()
+      line = walk.canvas.select("#"+lineId);
 
-    var box = walk.canvas.append("svg:rect")
-      .attr("x",this.boxCoordinates.p0.x)
-      .attr("y",this.boxCoordinates.p0.y)
-      .attr("width", this.boxCoordinates.p1.x - this.boxCoordinates.p0.x)
-      .attr("height", this.boxCoordinates.p1.y - this.boxCoordinates.p0.y)
-      .style("fill","rgb(0,0,0)")
-      .style("fill-opacity",0.0)
-      .style("stroke-width",2)
-      .style("stroke","rgb(255,255,255)")
-      .style("stroke-opacity",0.4)
-      .attr("id", this.boxId)
+      if (line.empty()) {
+        walk.canvas.append("svg:line")
+          .attr("x1", x)
+          .attr("y1", y)
+          .attr("x2", xEnd)
+          .attr("y2", yEnd)
+          .style("stroke", walk.palette[0])
+          .style("stroke-width", 2)
+          .attr("id", lineId)
+          .datum(0);
+      } else {
+        var colorIdx = Math.min(line.datum() + 1, walk.palette.length - 1);
+        line.style('stroke', walk.palette[colorIdx]).datum(colorIdx);
+      }
 
-    this.steps += 1
+      walk.canvas.selectAll('#'+walk.boxId).remove();
+      walk.canvas.select('#' + walk.boxId + "-label").remove();
+      walk.canvas.select('#' + walk.spanId).remove();
 
-    walk.canvas.select('#' + this.boxId + "-label")
-      .attr("x",this.boxCoordinates.p0.x - 10)
-      .attr("y",this.boxCoordinates.p0.y - 5)
-      .style("stroke","#fcc5c0")
-      .style("fill","#fcc5c0")
-      .style("font-family","Montserrat")
-      .text(this.walkId)
+      if(walk.boxVisible) { 
+        var strokeWidth = 2;
+        var strokeOpacity = 0.3;
 
-    walk.canvas.select('#' + this.spanId)
-      .text("walk " + this.walkId + " steps = " + this.steps)
+        if (walk.boxHighlighted) {
+          strokeOpacity = 0.7;
+          strokeWidth = 3;
 
-    window.setTimeout(function() {
-      walk.move();
-    }, 0);
+          walk.canvas.append("text")
+            .attr("id", walk.spanId)
+            .style("stroke", "#fcc5c0")
+            .style("fill", "#fcc5c0")
+            .style("font-family", "Montserrat")
+            .attr("x", walk.boxCoordinates.p1.x - 8)
+            .attr("y", walk.boxCoordinates.p1.y - 8)
+            .attr("text-anchor", "end")
+            .text(walk.steps);
+        }
+
+        var box = walk.canvas.append("svg:rect")
+          .attr("x", walk.boxCoordinates.p0.x)
+          .attr("y", walk.boxCoordinates.p0.y)
+          .attr("width", walk.boxCoordinates.p1.x - walk.boxCoordinates.p0.x)
+          .attr("height", walk.boxCoordinates.p1.y - walk.boxCoordinates.p0.y)
+          .style("fill", "rgb(0,0,0)")
+          .style("fill-opacity", 0.0)
+          .style("stroke-width", strokeWidth)
+          .style("stroke", "rgb(255,255,255)")
+          .style("stroke-opacity",strokeOpacity)
+          .attr("id", walk.boxId)
+          .attr("class", "walk-box");
+
+        walk.canvas.append("text")
+          .attr("id", walk.boxId + "-label")
+          .style("stroke", "#fcc5c0")
+          .style("fill", "#fcc5c0")
+          .style("font-family", "Montserrat")
+          .attr("x", walk.boxCoordinates.p0.x + 6)
+          .attr("y", walk.boxCoordinates.p0.y + 18)
+          .text(walk.walkId)
+          .attr("class", "walk-box-label");
+      }
+    }
+
+    walk.move = function() {
+      walk.updateWalkData();
+      walk.drawMove();
+      window.setTimeout(function() {
+        walk.move();
+      }, 2);
+    }
   }
-}
 
-var walkManager = new WalkManager()
+  var walkManager = new WalkManager();
+})

@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html>
 
-  <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
-    <title>Random walk</title>
-    <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
-    <script type="text/javascript" src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
-    <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
-    <style type="text/css">
-body {
-  background: #111;
-}
-     </style>
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+  <title>Random walk</title>
+  <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+  <script type="text/javascript" src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+  <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script type="text/javascript" src="./randomWalk.js"></script>
 </head>
+
 <body>
-  <!-- <script type="text/javascript" src="color-scheme.js"></script> -->
-  <!-- <script type="text/javascript" src="colorGenerator.js"></script> -->
-  <script type="text/javascript" src="randomWalk.js"></script>
+  <div id=header-div>
+    <input id="toggle-box-button" type="button" class="button" value="Toggle Boxes">
+  </div>
+  <div id=vis-div></div>
+  <div id=data-div></div>
 </body>
 </html>
